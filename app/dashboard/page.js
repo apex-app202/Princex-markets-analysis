@@ -50,6 +50,7 @@ export default function DashboardPage() {
         .single();
       if (!userRow || (!userRow.is_active && userRow.role !== 'admin')) { router.push('/pricing'); return; }
       setProfile(userRow);
+      handleGetSignal();
     });
   }, []);
 

@@ -1,6 +1,6 @@
 'use client';
-export const dynamic = 'force-dynamic';
 
+export const dynamic = 'force-dynamic';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,6 +12,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -20,10 +21,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    const { data, error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (loginError) {
       setError(loginError.message);
@@ -39,21 +37,14 @@ export default function LoginPage() {
 
     setLoading(false);
 
-    if (profile?.role === 'admin') {
-      router.push('/admin');
-    } else if (profile?.is_active) {
-      router.push('/dashboard');
-    } else {
-      router.push('/pricing');
-    }
+    if (profile?.role === 'admin') router.push('/admin');
+    else if (profile?.is_active) router.push('/dashboard');
+    else router.push('/pricing');
   }
 
   return (
     <main className="flex items-center justify-center min-h-screen px-4">
-      <form
-        onSubmit={handleLogin}
-        className="w-full max-w-sm bg-[#111] border border-white/10 rounded-xl p-6 space-y-4"
-      >
+      <form onSubmit={handleLogin} className="w-full max-w-sm bg-[#111] border border-white/10 rounded-xl p-6 space-y-4">
         <h1 className="text-xl font-bold">Log in</h1>
 
         <input
@@ -64,14 +55,28 @@ export default function LoginPage() {
           required
           className="w-full bg-black border border-white/20 rounded-lg px-3 py-2 outline-none focus:border-accent"
         />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="w-full bg-black border border-white/20 rounded-lg px-3 py-2 outline-none focus:border-accent"
-        />
+
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full bg-black border border-white/20 rounded-lg px-3 py-2 pr-16 outline-none focus:border-accent"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-accent"
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
+
+        <div className="text-right -mt-2">
+          <a href="/forgot-password" className="text-xs text-accent">Forgot password?</a>
+        </div>
 
         {error && <p className="text-fall text-sm">{error}</p>}
 
@@ -84,8 +89,7 @@ export default function LoginPage() {
         </button>
 
         <p className="text-sm text-white/60 text-center">
-          No account?{' '}
-          <a href="/signup" className="text-accent">Sign up</a>
+          No account? <a href="/signup" className="text-accent">Sign up</a>
         </p>
       </form>
     </main>

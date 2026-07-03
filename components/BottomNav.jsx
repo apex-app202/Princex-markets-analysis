@@ -6,7 +6,6 @@ export default function BottomNav({ active }) {
   const tabs = [
     { key: 'analysis', label: 'Analysis', href: '/dashboard' },
     { key: 'home', label: 'Home', href: '/home' },
-    { key: 'history', label: 'History', href: '/history' },
     { key: 'account', label: 'Account', href: '/account' },
   ];
 
