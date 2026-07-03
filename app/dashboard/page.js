@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase-client';
 import { fetchCandles, VOLATILITY_PAIRS } from '@/lib/deriv-feed';
 import { runAnalysis } from '@/lib/scoring-engine';
 import TradingChart from '@/components/TradingChart';
+import ChartErrorBoundary from '@/components/ChartErrorBoundary';
 
 const TIMEFRAMES = ['1m', '5m', '15m', '1h'];
 
@@ -259,13 +260,15 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <TradingChart
-            candles={candles}
-            signal={signal}
-            activeOverlays={activeOverlays}
-            showRsi={showRsi}
-            showMacd={showMacd}
-          />
+          <ChartErrorBoundary>
+            <TradingChart
+              candles={candles}
+              signal={signal}
+              activeOverlays={activeOverlays}
+              showRsi={showRsi}
+              showMacd={showMacd}
+            />
+          </ChartErrorBoundary>
         </div>
       )}
 
