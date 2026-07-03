@@ -1,15 +1,12 @@
 import './globals.css';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 export const metadata = {
   title: 'Princex Markets Analysis',
   description: 'Precision signals for Deriv Rise/Fall trading',
   manifest: '/manifest.json',
   themeColor: '#0a0a0a',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'Princex',
-  },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Princex' },
 };
 
 export default function RootLayout({ children }) {
@@ -19,8 +16,8 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
-      <body className="bg-[#0a0a0a] text-white min-h-screen">
-        {children}
+      <body className="min-h-screen">
+        <ThemeProvider>{children}</ThemeProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `
