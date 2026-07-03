@@ -1,14 +1,23 @@
 'use client';
-export const dynamic = 'force-dynamic';
 
+export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
 import { fetchCandles, VOLATILITY_PAIRS } from '@/lib/deriv-feed';
 import { runAnalysis } from '@/lib/scoring-engine';
+import TradingChart from '@/components/TradingChart';
 
 const TIMEFRAMES = ['1m', '5m', '15m', '1h'];
+
+const OVERLAY_OPTIONS = [
+  { key: 'ema20', label: 'EMA 20' },
+  { key: 'ema50', label: 'EMA 50' },
+  { key: 'ema200', label: 'EMA 200' },
+  { key: 'supertrend', label: 'Supertrend' },
+  { key: 'vwap', label: 'VWAP' },
+];
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -18,10 +27,16 @@ export default function DashboardPage() {
   const [pair, setPair] = useState('R_10');
   const [timeframe, setTimeframe] = useState('5m');
   const [signal, setSignal] = useState(null);
+  const [candles, setCandles] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [autoScan, setAutoScan] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+
+  const [activeOverlays, setActiveOverlays] = useState(['ema20', 'supertrend']);
+  const [showRsi, setShowRsi] = useState(true);
+  const [showMacd, setShowMacd] = useState(true);
+  const [showIndicatorPanel, setShowIndicatorPanel] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -55,23 +70,22 @@ export default function DashboardPage() {
         tier: result.tier,
         fires: result.fires,
       }),
-    }).catch(() => {}); // non-blocking — don't break the UI if logging fails
+    }).catch(() => {});
   }
 
-  // Stability rule: signal card locks once shown, only replaced when the
-  // user explicitly requests a new one — no re-render mid-scoring.
   const getSignal = useCallback(async (symbol, tf) => {
     setLoading(true);
     setError('');
     try {
-      const candles = await fetchCandles(symbol, tf, 200);
-      const result = runAnalysis(symbol, tf, candles);
+      const fetchedCandles = await fetchCandles(symbol, tf, 200);
+      const result = runAnalysis(symbol, tf, fetchedCandles);
       if (!result) {
         setError('Not enough candle history to score this pair yet.');
         setLoading(false);
         return null;
       }
       logSignal(result);
+      setCandles(fetchedCandles);
       setLoading(false);
       return result;
     } catch (err) {
@@ -100,16 +114,22 @@ export default function DashboardPage() {
       if (result && result.fires) {
         if (!best || result.score > best.score) best = result;
       }
-      // 3-second minimum gap per pair, per stability rules
       await new Promise((r) => setTimeout(r, 3000));
     }
 
     setAutoScan(false);
     if (best) {
+      setPair(best.pair);
       setSignal(best);
     } else {
       setError('No signal at score 8+ found across scanned pairs.');
     }
+  }
+
+  function toggleOverlay(key) {
+    setActiveOverlays((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
   }
 
   return (
@@ -159,7 +179,7 @@ export default function DashboardPage() {
         </select>
       </div>
 
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-4">
         <button
           onClick={handleGetSignal}
           disabled={loading || autoScan}
@@ -177,7 +197,7 @@ export default function DashboardPage() {
       </div>
 
       {autoScan && (
-        <div className="w-full h-1 bg-white/10 rounded-full mb-6 overflow-hidden">
+        <div className="w-full h-1 bg-white/10 rounded-full mb-4 overflow-hidden">
           <div
             className="h-full bg-accent transition-all"
             style={{ width: `${scanProgress}%` }}
@@ -186,6 +206,68 @@ export default function DashboardPage() {
       )}
 
       {error && <p className="text-fall text-sm mb-4">{error}</p>}
+
+      {/* Chart section */}
+      {candles && (
+        <div className="mb-4">
+          <button
+            onClick={() => setShowIndicatorPanel((v) => !v)}
+            className="text-xs text-accent mb-2"
+          >
+            {showIndicatorPanel ? 'Hide' : 'Show'} indicator toggles
+          </button>
+
+          {showIndicatorPanel && (
+            <div className="bg-[#111] border border-white/10 rounded-lg p-3 mb-3 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {OVERLAY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => toggleOverlay(opt.key)}
+                    className={`text-xs px-3 py-1.5 rounded-full border ${
+                      activeOverlays.includes(opt.key)
+                        ? 'border-accent text-accent bg-accent/10'
+                        : 'border-white/20 text-white/50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowRsi((v) => !v)}
+                  className={`text-xs px-3 py-1.5 rounded-full border ${
+                    showRsi
+                      ? 'border-accent text-accent bg-accent/10'
+                      : 'border-white/20 text-white/50'
+                  }`}
+                >
+                  RSI panel
+                </button>
+                <button
+                  onClick={() => setShowMacd((v) => !v)}
+                  className={`text-xs px-3 py-1.5 rounded-full border ${
+                    showMacd
+                      ? 'border-accent text-accent bg-accent/10'
+                      : 'border-white/20 text-white/50'
+                  }`}
+                >
+                  MACD panel
+                </button>
+              </div>
+            </div>
+          )}
+
+          <TradingChart
+            candles={candles}
+            signal={signal}
+            activeOverlays={activeOverlays}
+            showRsi={showRsi}
+            showMacd={showMacd}
+          />
+        </div>
+      )}
 
       <div className="min-h-[420px]">
         {signal && (
@@ -290,7 +372,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {!signal && !loading && !error && (
+        {!signal && !loading && !error && !candles && (
           <div className="flex items-center justify-center h-[420px] text-white/30 text-sm">
             Select a pair and tap GET SIGNAL
           </div>
